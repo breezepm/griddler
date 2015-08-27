@@ -3,10 +3,9 @@
 require 'spec_helper'
 
 describe Griddler::Email, 'body formatting' do
-
   it 'uses the html field and sanitizes it when text param missing' do
     body = <<-EOF
-      <p>Hello.</p><span>Reply ABOVE THIS LINE</span><p>original message</p>
+      <p>Hello.</p><span>-- REPLY ABOVE THIS LINE --</span><p>original message</p>
     EOF
 
     expect(body_from_email(html: body)).to eq 'Hello.'
@@ -14,7 +13,7 @@ describe Griddler::Email, 'body formatting' do
 
   it 'uses the html field and sanitizes it when text param is empty' do
     body = <<-EOF
-      <p>Hello.</p><span>Reply ABOVE THIS LINE</span><p>original message</p>
+      <p>Hello.</p><span>-- REPLY ABOVE THIS LINE --</span><p>original message</p>
     EOF
 
     expect(body_from_email(html: body, text: '')).to eq 'Hello.'
@@ -58,7 +57,7 @@ describe Griddler::Email, 'body formatting' do
 
   it 'handles everything on one line' do
     body = <<-EOF
-      Hello. On 01/12/13, Tristan <email@example.com> wrote: Reply ABOVE THIS LINE or visit your website to respond.
+      Hello. On 01/12/13, Tristan <email@example.com> wrote: -- REPLY ABOVE THIS LINE -- or visit your website to respond.
     EOF
 
     expect(body_from_email(text: body)).to eq 'Hello.'
@@ -222,11 +221,11 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq ''
   end
 
-  it 'handles "Reply ABOVE THIS LINE" format' do
+  it 'handles "-- REPLY ABOVE THIS LINE --" format' do
     body = <<-EOF
       Hello.
 
-      Reply ABOVE THIS LINE
+      -- REPLY ABOVE THIS LINE --
 
       Hey!
     EOF
@@ -234,23 +233,23 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
-  it 'removes > in "> Reply ABOVE THIS LINE" ' do
+  it 'removes > in "> -- REPLY ABOVE THIS LINE --" ' do
     body = <<-EOF
       Hello.
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
     EOF
 
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
-  it 'removes any non-content things above Reply ABOVE THIS LINE' do
+  it 'removes any non-content things above -- REPLY ABOVE THIS LINE --' do
     body = <<-EOF
       Hello.
 
       On 2010-01-01 12:00:00 Tristan wrote:
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
 
       Hey!
     EOF
@@ -258,13 +257,13 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
-  it 'removes any iphone things above Reply ABOVE THIS LINE' do
+  it 'removes any iphone things above -- REPLY ABOVE THIS LINE --' do
     body = <<-EOF
       Hello.
 
       Sent from my iPhone
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
 
       Hey!
     EOF
@@ -272,7 +271,7 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
-  it 'should remove any signature above Reply ABOVE THIS LINE' do
+  it 'should remove any signature above -- REPLY ABOVE THIS LINE --' do
     body = <<-EOF
       Hello.
 
@@ -281,7 +280,7 @@ describe Griddler::Email, 'body formatting' do
       CEO, company
       t: 6174821300
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
 
       > Hey!
     EOF
@@ -289,7 +288,20 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
-  it 'should remove any signature without space above Reply ABOVE THIS LINE' do
+  it 'should trim signature with non-breaking space after hyphens' do
+    body = <<-EOF
+      Hello.
+
+      --\xC2\xA0
+      Mr. Smith
+      CEO, company
+      t: 6174821300
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
+  it 'should remove any signature without space above -- REPLY ABOVE THIS LINE --' do
     body = <<-EOF
       Hello.
 
@@ -298,7 +310,7 @@ describe Griddler::Email, 'body formatting' do
       CEO, company
       t: 6174821300
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
 
       > Hey!
     EOF
@@ -328,7 +340,7 @@ describe Griddler::Email, 'body formatting' do
       CEO, company
       t: 6174821300
 
-      > Reply ABOVE THIS LINE
+      > -- REPLY ABOVE THIS LINE --
 
       > Hey!
     EOF
@@ -444,6 +456,33 @@ describe Griddler::Email, 'extracting email headers' do
 
     headers = header_from_email(header)
     expect(headers[header_name]).to eq header_value
+  end
+
+  it 'handles a hash being submitted' do
+    header = {
+      "X-Mailer" => "Airmail (271)",
+      "Mime-Version" => "1.0"
+    }
+    headers = header_from_email(header)
+    expect(headers["X-Mailer"]).to eq("Airmail (271)")
+  end
+
+  it 'cleans invalid UTF-8 bytes from a hash when it is submitted' do
+    header_name = 'Arbitrary-Header'
+    header_value = "invalid utf-8 bytes are \xc0\xc1\xf5\xfa\xfe\xff."
+    header = { header_name => header_value }
+    headers = header_from_email(header)
+
+    expect(headers[header_name]).to eq "invalid utf-8 bytes are ÀÁõúþÿ."
+  end
+
+  it 'deeply cleans invalid UTF-8 bytes from a hash when it is submitted' do
+    header_name = 'Arbitrary-Header'
+    header_value = "invalid utf-8 bytes are \xc0\xc1\xf5\xfa\xfe\xff."
+    header = { header_name => { "a" => [header_value] } }
+    headers = header_from_email(header)
+
+    expect(headers[header_name]).to eq({ "a" => ["invalid utf-8 bytes are ÀÁõúþÿ."] })
   end
 
   it 'handles no matched headers' do
@@ -585,6 +624,19 @@ describe Griddler::Email, 'extracting email addresses' do
     expect(email.to).to eq [expected]
     expect(email.from).to eq expected
   end
+
+  it 'handles invalid UTF-8 characters' do
+    email = Griddler::Email.new(
+      text: 'hi',
+      to: ["\xc0\xc1\xf5\xfa\xfe\xff #{@full_address}"],
+      from: "\xc0\xc1\xf5\xfa\xfe\xff #{@full_address}")
+    expected = @address_components.merge(
+      full: "ÀÁõúþÿ Bob <bob@example.com>",
+      name: "ÀÁõúþÿ Bob"
+    )
+    expect(email.to).to eq [expected]
+    expect(email.from).to eq expected
+  end
 end
 
 describe Griddler::Email, 'extracting email addresses from CC field' do
@@ -611,6 +663,10 @@ describe Griddler::Email, 'extracting email addresses from CC field' do
 end
 
 describe Griddler::Email, 'with custom configuration' do
+  before do
+    Griddler.configure
+  end
+
   let(:params) do
     {
       to: ['Some Identifier <some-identifier@example.com>'],
@@ -619,19 +675,15 @@ describe Griddler::Email, 'with custom configuration' do
       text: <<-EOS.strip_heredoc.strip
         lololololo hi
 
-        Reply ABOVE THIS LINE
+        -- REPLY ABOVE THIS LINE --
 
         hey sup
       EOS
     }
   end
 
-  before do
-    Griddler.configure
-  end
-
   describe 'accepts and works with a string reply delimiter' do
-    it 'does not split on Reply ABOVE THIS LINE' do
+    it 'does not split on -- REPLY ABOVE THIS LINE --' do
       allow(Griddler.configuration).to receive_messages(reply_delimiter: 'Stuff and things')
       email = Griddler::Email.new(params)
 

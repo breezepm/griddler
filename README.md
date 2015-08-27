@@ -17,7 +17,7 @@ Tutorials
   [great tutorial](http://blog.sendgrid.com/receiving-email-in-your-rails-app-with-griddler/)
   on integrating Griddler with your application.
 * We have our own blog post on the subject over at
-  [Giant Robots](http://robots.thoughtbot.com/handle-incoming-email-with-griddler).
+  [Giant Robots](https://robots.thoughtbot.com/griddler-is-better-than-ever).
 
 Installation
 ------------
@@ -66,7 +66,7 @@ end
 | `reply_delimiter`  | The string searched for that will split your body.
 | `email_service`    | Tells Griddler which email service you are using. The supported email service options are `:sendgrid` (the default), `:cloudmailin` (expects multipart format), `:postmark`, `:mandrill` and `:mailgun`. You will also need to have an appropriate [adapter] gem included in your Gemfile.
 
-By default Griddler will look for a class named `EmailProcessor`. The class is 
+By default Griddler will look for a class named `EmailProcessor`. The class is
 initialized with a `Griddler::Email` instance representing the incoming
 email, and has a `process` method to actually process the email.
 For example, in `./lib/email_processor.rb`:
@@ -100,12 +100,12 @@ Griddler::Email attributes
 | `#from`        | A hash containing the sender address information.
 | `#cc`          | An array of hashes containing cc email address information.
 | `#subject`     | The subject of the email message.
-| `#body`        | The full contents of the email body **unless** there is a line in the email containing the string `-- Reply ABOVE THIS LINE --`. In that case `.body` will contain everything before that line.
+| `#body`        | The full contents of the email body **unless** there is a line in the email containing the string `-- REPLY ABOVE THIS LINE --`. In that case `.body` will contain everything before that line.
 | `#raw_text`    | The raw text part of the body.
 | `#raw_html`    | The raw html part of the body.
 | `#raw_body`    | The raw body information provided by the email service.
 | `#attachments` | An array of `File` objects containing any attachments.
-| `#headers`     | A hash of headers parsed by `Mail::Header`.
+| `#headers`     | A hash of headers parsed by `Mail::Header`, unless they are already formatted as a hash when received from the adapter in which case the original hash is returned.
 | `#raw_headers` | The raw headers included in the message.
 
 ### Email Addresses

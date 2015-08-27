@@ -39,7 +39,7 @@ module Griddler
     end
 
     def extract_address(address)
-      EmailParser.parse_address(address)
+      EmailParser.parse_address(clean_text(address))
     end
 
     def extract_body
@@ -47,7 +47,11 @@ module Griddler
     end
 
     def extract_headers
-      EmailParser.extract_headers(clean_invalid_utf8_bytes(params[:headers]))
+      if params[:headers].is_a?(Hash)
+        deep_clean_invalid_utf8_bytes(params[:headers])
+      else
+        EmailParser.extract_headers(clean_invalid_utf8_bytes(params[:headers]))
+      end
     end
 
     def extract_cc_from_headers(headers)
@@ -70,14 +74,28 @@ module Griddler
       cleaned_html
     end
 
+    def deep_clean_invalid_utf8_bytes(object)
+      case object
+      when Hash
+        object.inject({}) do |clean_hash, (key, dirty_value)|
+          clean_hash[key] = deep_clean_invalid_utf8_bytes(dirty_value)
+          clean_hash
+        end
+      when Array
+        object.map { |element| deep_clean_invalid_utf8_bytes(element) }
+      when String
+        clean_invalid_utf8_bytes(object)
+      else
+        object
+      end
+    end
+
     def clean_invalid_utf8_bytes(text)
       if text && !text.valid_encoding?
-        text = text
-          .force_encoding('ISO-8859-1')
-          .encode('UTF-8')
+        text.force_encoding('ISO-8859-1').encode('UTF-8')
+      else
+        text
       end
-
-      text
     end
   end
 end

@@ -1,3 +1,22 @@
+## HEAD (unreleased)
+
+* The README claimed that the delimiter for replies was `-- REPLY ABOVE THIS
+  LINE --`, but it was actually `-- Reply ABOVE THIS LINE --`. Now the
+  delimiter is actually `-- REPLY ABOVE THIS LINE --`.
+
+## 1.2.1
+
+* Sanitize UTF-8 in addresses (#214, #215)
+* Deep clean invalid UTF-8 bytes from header hash (#212)
+
+## 1.2.0
+
+* Use Ruby unicode compatible regexes for UTF8 strings (#208)
+* Allow hashes to be submitted as headers (#185). Griddler will still clean the
+  hash values of invalid UTF-8 bytes if you pass in hashes.
+* Stop testing against Rails 4.0.x (#209)
+* Test against Rails 4.2.x (#209)
+
 ## 1.1.1
 
 * Clean non-UTF-8 chars from email headers (#84)
