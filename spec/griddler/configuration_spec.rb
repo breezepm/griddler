@@ -14,9 +14,17 @@ describe Griddler::Configuration do
     end
 
     it 'raises a helpful error if EmailProcessor is undefined' do
-      allow(Kernel).to receive_messages(const_defined?: false)
+      # temporarily undefine EmailProcessor
+      ep = EmailProcessor
+      Object.send(:remove_const, :EmailProcessor)
+      allow(ActiveSupport::Dependencies).to(
+        receive_messages(search_for_file: nil))
 
-      expect { Griddler.configuration.processor_class }.to raise_error(NameError, %r{https://github\.com/thoughtbot/griddler#defaults})
+      expect { Griddler.configuration.processor_class }.to raise_error(
+        NameError, %r{https://github\.com/thoughtbot/griddler#defaults})
+
+      # restore EmailProcessor
+      EmailProcessor = ep
     end
   end
 
@@ -26,7 +34,7 @@ describe Griddler::Configuration do
     end
 
     it 'stores a processor_class' do
-      class DummyProcessor 
+      class DummyProcessor
       end
 
       Griddler.configure do |config|
@@ -42,6 +50,15 @@ describe Griddler::Configuration do
       end
 
       expect(Griddler.configuration.processor_method).to eq(:perform)
+    end
+
+    it 'stores a reply_delimiter' do
+      Griddler.configure do |config|
+        config.reply_delimiter = '-----Original Message-----'
+      end
+
+      expect(Griddler.configuration.reply_delimiter).to eq(
+        '-----Original Message-----')
     end
 
     it 'sets and stores an email_service' do
