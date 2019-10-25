@@ -157,6 +157,73 @@ describe Griddler::Email, 'body formatting' do
     expect(body_from_email(text: body)).to eq 'Hello.'
   end
 
+  it 'handles french format: "Le [date], [soandso] <email@example.com> a écrit :"' do
+    body = <<-EOF.strip_heredoc
+      Hello.
+
+      Le 11 mars 2016, at 18:00, Tristan <email@example.com> a écrit :
+      > Check out this report.
+      >
+      > It's pretty cool.
+      >
+      > Thanks, Tristan
+      >
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
+  it 'handles LONG french format: "Le [date], [soandso] <email@example.com> a écrit :"' do
+    body = <<-EOF.strip_heredoc
+      Hello.
+
+      Le 11 mars 2016, at 18:00, Tristan With A Really Really Long Name <
+      tristanhasasuperlongemailthatforcesanewline@candidates.welcomekit.co> a
+      écrit :
+      > Check out this report.
+      >
+      > It's pretty cool.
+      >
+      > Thanks, Tristan
+      >
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
+  it 'handles spanish format: "El [date], [soandso] <email@example.com> escribió:"' do
+    body = <<-EOF.strip_heredoc
+      Hello.
+
+      El 11/03/2016 11:34, Pedro Pérez <email@example.com> escribió:
+      > Check out this report.
+      >
+      > It's pretty cool.
+      >
+      > Thanks, Pedro
+      >
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
+  it 'handles LONG spanish format: "El [date], [soandso] <email@example.com> escribió:"' do
+    body = <<-EOF.strip_heredoc
+      Hello.
+
+      El 11/03/2016 11:34, Pedro Pérez <
+      pedrohasasuperlongemailthatforcesanewline@example.com> escribió:
+      > Check out this report.
+      >
+      > It's pretty cool.
+      >
+      > Thanks, Pedro
+      >
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
   it 'handles "From: email@email.com" format' do
     body = <<-EOF
       Hello.
@@ -178,6 +245,22 @@ describe Griddler::Email, 'body formatting' do
       *From:* bob@example.com
       *Sent:* Today
       *Subject:* Awesome report.
+
+      Check out this report!
+    EOF
+
+    expect(body_from_email(text: body)).to eq 'Hello.'
+  end
+
+  it 'handles "De : Firstname <email@email.com>" format (french Outlook)' do
+    body = <<-EOF
+      Hello.
+
+      ________________________________
+      De : Bob <bob@example.com>
+      Envoyé : mercredi 15 juin 2016 07:24
+      À : robert@example.com
+      Objet : Awesome report.
 
       Check out this report!
     EOF
@@ -691,6 +774,18 @@ describe Griddler::Email, 'extracting email addresses' do
     email = Griddler::Email.new(to: ['johndoe', @full_address])
     expect(email.to).to eq [expected]
   end
+
+  it 'returns the original recipient' do
+    expected = @address_components
+    email = Griddler::Email.new(original_recipient: @full_address)
+    expect(email.original_recipient).to eq expected
+  end
+
+  it 'returns the reply to' do
+    expected = @address_components
+    email = Griddler::Email.new(reply_to: @full_address)
+    expect(email.reply_to).to eq expected
+  end
 end
 
 describe Griddler::Email, 'extracting email subject' do
@@ -865,6 +960,114 @@ This is the real text\r\n\r\nOn Tue, Jun 14, 2016 at 10:25 AM Someone <\r\nveryl
       email = Griddler::Email.new(params)
 
       expect(email.to.map { |to| to[:full] }).to eq recipients.reject(&:empty?)
+    end
+  end
+end
+
+describe Griddler::Email, 'extracting vendor specific' do
+  it 'extracts a hash of vendor specific data' do
+    meeting_info = {
+      name: 'Weekly Stand Up',
+      date: '01/01/2015',
+      time: '8:00am'
+    }
+    params = {
+      vendor_specific: {
+        body_calendar: meeting_info
+      }
+    }
+    email = Griddler::Email.new(params)
+
+    expect(email.vendor_specific).to eq({ body_calendar: meeting_info })
+  end
+
+  it 'defaults to an empty hash' do
+    email = Griddler::Email.new({})
+
+    expect(email.vendor_specific).to eq({})
+  end
+end
+
+describe Griddler::Email, 'methods' do
+  describe '#to_h' do
+    it 'returns an indifferent access hash of Griddler::Email attributes' do
+      params = {
+        to: ['Some Identifier <some-identifier@example.com>'],
+        from: 'Joe User <joeuser@example.com>',
+        subject: 'Re: [ThisApp] That thing',
+        spam_report: {
+          score: 10,
+        },
+        charsets: {
+          to: 'UTF-8',
+          html: 'utf-8',
+          subject: 'UTF-8',
+          from: 'UTF-8',
+          text: 'iso-8859-1',
+        }.to_json,
+        text: <<-EOS.strip_heredoc.strip
+          lololololo hi
+
+          -- REPLY ABOVE THIS LINE --
+
+          hey sup
+        EOS
+      }
+      email = Griddler::Email.new(params)
+
+      hash = email.to_h
+
+      expect(hash).to eq(
+        to: email.to,
+        from: email.from,
+        cc: email.cc,
+        bcc: email.bcc,
+        subject: email.subject,
+        body: email.body,
+        raw_body: email.raw_body,
+        raw_text: email.raw_text,
+        raw_html: email.raw_html,
+        headers: email.headers,
+        raw_headers: email.raw_headers,
+        attachments: email.attachments,
+        vendor_specific: {},
+        spam_report: email.spam_report,
+        spam_score: email.spam_score,
+        charsets: email.charsets,
+      )
+    end
+  end
+end
+
+describe Griddler::Email, 'extracting spam score' do
+  let(:params) do
+    {
+      to: ['Some Identifier <some-identifier@example.com>'],
+      from: 'Joe User <joeuser@example.com>',
+      subject: 'Re: [ThisApp] That thing',
+      text: 'lololololo hi',
+    }
+  end
+
+  describe 'spam_score' do
+    subject { Griddler::Email.new(params) }
+
+    context 'With no spam report' do
+      it { expect(subject.spam_score).to be nil }
+    end
+
+    context 'With a spam report but no score' do
+      before do
+        params[:spam_report] = { other_key: 'value' }
+      end
+      it { expect(subject.spam_score).to be nil }
+    end
+
+    context 'With a score symbol key' do
+      before do
+        params[:spam_report] = { score: 42 }
+      end
+      it { expect(subject.spam_score).to eq 42 }
     end
   end
 end

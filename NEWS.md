@@ -1,5 +1,29 @@
 ## HEAD (unreleased)
 
+## 1.5.2
+* Add Email#charsets reader ([#292](https://github.com/thoughtbot/griddler/pull/292))
+
+## 1.5.1
+* Don't raise when skipping `verify_authenticity_token` ([#299](https://github.com/thoughtbot/griddler/pull/299))
+
+## 1.5.0
+* Add `params[:vendor_specific]` to `Griddler::Email` ([#285](https://github.com/thoughtbot/griddler/pull/285))
+* Handle common French/Spanish formats ([#250](https://github.com/thoughtbot/griddler/pull/250))
+* Add spam report and spam score to email ([#283](https://github.com/thoughtbot/griddler/pull/283))
+* Pass original recipient and reply to through ([#271](https://github.com/thoughtbot/griddler/pull/271))
+* Add license to gemspec ([#293](https://github.com/thoughtbot/griddler/pull/293))
+* Add additional documentation to the `reply_delimiter` config field ([#294](https://github.com/thoughtbot/griddler/pull/294))
+* Skip CSRF check in controller ([#298](https://github.com/thoughtbot/griddler/pull/298))
+* Use RSpec request spec and test against Rails 5.1 ([#296](https://github.com/thoughtbot/griddler/pull/296]))
+* Test against Rails 5.2 and Ruby 2.5. Drop testing against Ruby 2.1.
+
+## 1.4.0
+* Add `to_h` support to `Griddler::Email` ([#276](https://github.com/thoughtbot/griddler/pull/276))
+* Allow user defined Email class ([#270](https://github.com/thoughtbot/griddler/pull/270))
+* Handle gmail carriage returns ([#260](https://github.com/thoughtbot/griddler/pull/260))
+* Fix link to SendGrid tutorial ([#259](https://github.com/thoughtbot/griddler/pull/259))
+* Add reference to `griddler-ses` adapter to README.md ([#257](https://github.com/thoughtbot/griddler/pull/257))
+
 ## 1.3.1
 
 * Allow access to email headers via an array ([#220](https://github.com/thoughtbot/griddler/issues/220))
